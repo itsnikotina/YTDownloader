@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DownloadTube</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #07070a;
+            --glass: rgba(255, 255, 255, 0.055);
+            --glass-hover: rgba(255, 255, 255, 0.085);
+            --border: rgba(255, 255, 255, 0.11);
+            --text: #f5f5f7;
+            --muted: #92929d;
+            --purple: #8b5cf6;
+            --pink: #ec4899;
+            --blue: #3b82f6;
+            --green: #22c55e;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            color: var(--text);
+            background:
+                radial-gradient(
+                    circle at 15% 20%,
+                    rgba(139, 92, 246, 0.16),
+                    transparent 32%
+                ),
+                radial-gradient(
+                    circle at 85% 80%,
+                    rgba(236, 72, 153, 0.12),
+                    transparent 30%
+                ),
+                var(--bg);
+
+            overflow-x: hidden;
+        }
+
+        /* Decorative background blobs */
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body::before {
+            top: -120px;
+            left: -100px;
+            background: var(--purple);
+        }
+
+        body::after {
+            right: -100px;
+            bottom: -120px;
+            background: var(--pink);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+        }
+
+        .card {
+            position: relative;
+            padding: 48px;
+            border: 1px solid var(--border);
+            border-radius: 28px;
+
+            background: var(--glass);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+
+            box-shadow:
+                0 30px 80px rgba(0, 0, 0, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+            animation: appear 0.7s ease-out both;
+        }
+
+        /* Subtle glass highlight */
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(255, 255, 255, 0.055),
+                    transparent 35%
+                );
+            pointer-events: none;
+        }
+
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+
+            margin-bottom: 22px;
+            padding: 7px 12px;
+
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+
+            background: rgba(255, 255, 255, 0.045);
+
+            color: #bdbdc8;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.7);
+        }
+
+        h1 {
+            margin-bottom: 14px;
+
+            font-size: clamp(38px, 7vw, 62px);
+            line-height: 0.98;
+            letter-spacing: -0.055em;
+            font-weight: 800;
+
+            background:
+                linear-gradient(
+                    110deg,
+                    #ffffff 10%,
+                    #c4b5fd 48%,
+                    #f9a8d4 90%
+                );
+
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            max-width: 500px;
+            margin-bottom: 34px;
+
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 14px;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+
+            color: #777783;
+            pointer-events: none;
+        }
+
+        #url-input {
+            width: 100%;
+            height: 58px;
+
+            padding: 0 18px 0 48px;
+
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            outline: none;
+
+            color: var(--text);
+            background: rgba(0, 0, 0, 0.23);
+
+            font-size: 15px;
+
+            transition:
+                border-color 0.25s ease,
+                background 0.25s ease,
+                box-shadow 0.25s ease;
+        }
+
+        #url-input::placeholder {
+            color: #666671;
+        }
+
+        #url-input:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        #url-input:focus {
+            border-color: rgba(139, 92, 246, 0.65);
+
+            background: rgba(0, 0, 0, 0.32);
+
+            box-shadow:
+                0 0 0 4px rgba(139, 92, 246, 0.09),
+                0 10px 35px rgba(0, 0, 0, 0.18);
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        button {
+            position: relative;
+            height: 56px;
+
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+
+            color: white;
+            font: inherit;
+            font-size: 15px;
+            font-weight: 700;
+
+            cursor: pointer;
+            overflow: hidden;
+
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease,
+                filter 0.25s ease;
+        }
+
+        button::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+
+            background: linear-gradient(
+                120deg,
+                transparent 25%,
+                rgba(255, 255, 255, 0.16),
+                transparent 75%
+            );
+
+            transform: translateX(-120%);
+            transition: transform 0.55s ease;
+        }
+
+        button:hover::before {
+            transform: translateX(120%);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+        }
+
+        button:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        #btn-video {
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(139, 92, 246, 0.95),
+                    rgba(236, 72, 153, 0.92)
+                );
+
+            box-shadow:
+                0 12px 30px rgba(139, 92, 246, 0.2);
+        }
+
+        #btn-video:hover {
+            border-color: rgba(216, 180, 254, 0.4);
+            box-shadow:
+                0 16px 38px rgba(139, 92, 246, 0.3);
+            filter: brightness(1.08);
+        }
+
+        #btn-audio {
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(59, 130, 246, 0.92),
+                    rgba(34, 197, 94, 0.88)
+                );
+
+            box-shadow:
+                0 12px 30px rgba(59, 130, 246, 0.18);
+        }
+
+        #btn-audio:hover {
+            border-color: rgba(147, 197, 253, 0.4);
+            box-shadow:
+                0 16px 38px rgba(59, 130, 246, 0.28);
+            filter: brightness(1.08);
+        }
+
+        .button-content {
+            position: relative;
+            z-index: 2;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+        }
+
+        .button-icon {
+            width: 19px;
+            height: 19px;
+        }
+
+        #status {
+            min-height: 20px;
+            margin-top: 18px;
+
+            color: #777783;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .footer {
+            margin-top: 26px;
+
+            color: #555560;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        @keyframes appear {
+            from {
+                opacity: 0;
+                transform: translateY(18px) scale(0.985);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Tablet */
+        @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+
+            .card {
+                padding: 32px 24px;
+                border-radius: 23px;
+            }
+
+            h1 {
+                font-size: clamp(38px, 12vw, 52px);
+            }
+
+            .subtitle {
+                font-size: 15px;
+                margin-bottom: 28px;
+            }
+        }
+
+        /* Mobile */
+        @media (max-width: 430px) {
+            .card {
+                padding: 28px 18px;
+            }
+
+            .badge {
+                margin-bottom: 18px;
+            }
+
+            #url-input {
+                height: 54px;
+                font-size: 14px;
+            }
+
+            .buttons {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                height: 54px;
+            }
+
+            .footer {
+                margin-top: 22px;
+            }
+        }
+
+        /* Reduced motion accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="container">
+
+        <section class="card">
+            <div class="content">
+
+                <h1>Baixador</h1>
+
+                <p class="subtitle">
+                    Cole um link do YouTube abaixo e escolha se deseja
+                    baixar o vídeo completo ou apenas o áudio.
+                </p>
+
+                <div class="input-wrapper">
+
+                    <span class="input-icon">
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </span>
+
+                    <input
+                        type="text"
+                        id="url-input"
+                        placeholder="Cole o link do YouTube aqui..."
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+
+                </div>
+
+                <div class="buttons">
+
+                    <button id="btn-video" type="button">
+                        <span class="button-content">
+                            <svg
+                                class="button-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="17 3 21 3 21 7"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+
+                            Baixar Vídeo
+                        </span>
+                    </button>
+
+                    <button id="btn-audio" type="button">
+                        <span class="button-content">
+                            <svg
+                                class="button-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M9 18V5l12-2v13"/>
+                                <circle cx="6" cy="18" r="3"/>
+                                <circle cx="18" cy="16" r="3"/>
+                            </svg>
+
+                            Baixar Áudio
+                        </span>
+                    </button>
+
+                </div>
+
+                <div id="status"></div>
+
+                <div class="footer">
+                    Cole o link, escolha o formato e pronto.
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const API_URL = 'https://officially-mysql-others-magazines.trycloudflare.com/download';
+
+        async function downloadMedia(format) {
+            const urlInput = document.getElementById('url-input').value.trim();
+            const statusDiv = document.getElementById('status');
+            const btn = document.getElementById(`btn-${format}`);
+            const otherBtn = document.getElementById(format === 'video' ? 'btn-audio' : 'btn-video');
+            
+            if (!urlInput) {
+                alert("Por favor, cole um link válido primeiro!");
+                return;
+            }
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="button-content">Processando... ⏳</span>`;
+            btn.disabled = true;
+            otherBtn.disabled = true;
+            statusDiv.innerText = "O celular está trabalhando duro... aguarde a janela de salvar aparecer.";
+            statusDiv.style.color = "#fbbf24"; 
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlInput, format: format })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Erro no servidor (${response.status})`);
+                }
+
+                const blob = await response.blob();
+                
+                let filename = format === 'video' ? 'video.mp4' : 'audio.mp3';
+                const disposition = response.headers.get('content-disposition');
+                if (disposition && disposition.includes('filename=')) {
+                    const parts = disposition.split('filename=');
+                    if (parts.length > 1) {
+                        filename = parts[1].split(';')[0].replace(/["']/g, '');
+                        try { filename = decodeURIComponent(escape(filename)); } catch(e) {}
+                    }
+                }
+
+                const objectUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = objectUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                
+                window.URL.revokeObjectURL(objectUrl);
+                document.body.removeChild(a);
+                
+                statusDiv.innerText = "✅ Download concluído com sucesso!";
+                statusDiv.style.color = "#10b981";
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerText = "❌ Ocorreu um erro: " + error.message;
+                statusDiv.style.color = "#ef4444";
+                alert("Erro: " + error.message + "\\n\\nVerifique se o celular está com o servidor ligado.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                otherBtn.disabled = false;
+            }
+        }
+
+        // Conectando os botões do ChatGPT à nossa função
+        document.getElementById('btn-video').addEventListener('click', () => downloadMedia('video'));
+        document.getElementById('btn-audio').addEventListener('click', () => downloadMedia('audio'));
+    </script>
+</body>
+</html>
+
