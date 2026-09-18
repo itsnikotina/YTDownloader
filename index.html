@@ -507,7 +507,6 @@
 
     </main>
 
-    <!-- Modal Admin Escondido -->
     <div id="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
         <div style="background: var(--bg); padding: 30px; border-radius: 20px; border: 1px solid var(--border); width: 90%; max-width: 500px; color: var(--text); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
             <h2 style="margin-bottom: 20px; color: #a78bfa; display: flex; align-items: center; gap: 8px;">
@@ -526,9 +525,18 @@
             </div>
             
             <p style="font-size: 13px; color: #92929d; margin-bottom: 8px;">Lista de Arquivos (Restos Mortais):</p>
-            <ul id="admin-file-list" style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; list-style: none; font-size: 12px; margin-bottom: 20px; color: #a1a1aa;">
+            <ul id="admin-file-list" style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; list-style: none; font-size: 12px; margin-bottom: 20px; color: #a1a1aa;">
                 <!-- files -->
             </ul>
+            
+            <p style="font-size: 13px; color: #92929d; margin-bottom: 8px;">Terminal Remoto (Termux):</p>
+            <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="admin-cmd" placeholder="Ex: ls -la ou cat server.py" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); color: white; outline: none; font-family: monospace;">
+                    <button id="btn-admin-exec" style="background: #8b5cf6; border: none; padding: 0 16px; border-radius: 8px; color: white; cursor: pointer; filter: none; box-shadow: none;">Executar</button>
+                </div>
+                <pre id="admin-terminal-out" style="background: #000; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); color: #22c55e; font-size: 11px; height: 120px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">Aguardando comandos...</pre>
+            </div>
             
             <div style="display: flex; gap: 12px;">
                 <button id="btn-admin-clear" style="background: #ef4444; border: none; flex: 1; border-radius: 12px; height: 46px; filter: none; box-shadow: none;">
@@ -542,7 +550,7 @@
     </div>
 
     <script>
-        const API_URL = 'https://filing-action-persons-band.trycloudflare.com/download';
+        const API_URL = 'https://officially-mysql-others-magazines.trycloudflare.com/download';
 
         let currentAbortController = null;
         let currentReqId = null;
@@ -656,7 +664,7 @@
         // Conectando os botões do ChatGPT à nossa função
         document.getElementById('btn-video').addEventListener('click', () => downloadMedia('video'));
         document.getElementById('btn-audio').addEventListener('click', () => downloadMedia('audio'));
-        // --- PAINEL ADMIN SECRETO ---
+
         let secretBuffer = "";
         const secretCode = "nikotina";
 
@@ -680,7 +688,7 @@
 
         async function carregarDadosAdmin() {
             try {
-                const res = await fetch('https://officially-mysql-others-magazines.trycloudflare.com/admin/status');
+                const res = await fetch(`${BASE_URL}/admin/status`);
                 const data = await res.json();
                 
                 document.getElementById('admin-file-count').innerText = data.count;
@@ -712,10 +720,37 @@
         document.getElementById('btn-admin-clear').addEventListener('click', async () => {
             if (confirm("Tem certeza que deseja apagar todos os arquivos residuais do celular?")) {
                 try {
-                    await fetch('https://officially-mysql-others-magazines.trycloudflare.com/admin/clear', { method: 'POST' });
+                    await fetch(`${BASE_URL}/admin/clear`, { method: 'POST' });
                     carregarDadosAdmin();
                     alert("Lixeira esvaziada com sucesso!");
                 } catch(e) {}
+            }
+        });
+        document.getElementById('btn-admin-exec').addEventListener('click', async () => {
+            const cmd = document.getElementById('admin-cmd').value;
+            const outDiv = document.getElementById('admin-terminal-out');
+            if (!cmd) return;
+            
+            const pwd = prompt("Senha de segurança para executar comandos:");
+            if (pwd !== "hackerman") {
+                outDiv.innerText = "Acesso negado: Senha incorreta!";
+                return;
+            }
+
+            outDiv.innerText = "Executando: " + cmd + "\n...";
+            try {
+                const res = await fetch(`${BASE_URL}/admin/exec`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({command: cmd, password: pwd})
+                });
+                const data = await res.json();
+                
+                if (data.error) outDiv.innerText = "[ERRO]\n" + data.error;
+                else outDiv.innerText = (data.stdout || "") + "\n" + (data.stderr || "");
+                
+            } catch(e) {
+                outDiv.innerText = "Falha ao conectar: " + e.message;
             }
         });
     </script>
