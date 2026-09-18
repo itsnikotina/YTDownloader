@@ -469,7 +469,7 @@
 
                 </div>
 
-                <div class="buttons">
+                <div class="buttons" id="action-buttons">
 
                     <button id="btn-video" type="button">
                         <span class="button-content">
@@ -489,6 +489,13 @@
 
                 </div>
 
+                <button id="btn-cancel" type="button" style="display: none; background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); width: 100%; margin-top: 14px;">
+                    <span class="button-content" style="color: #fca5a5;">
+                        <span class="iconify button-icon" data-icon="lucide:ban" data-width="19" data-height="19"></span>
+                        Cancelar Download
+                    </span>
+                </button>
+
                 <div id="status"></div>
 
                 <div class="footer">
@@ -500,8 +507,52 @@
 
     </main>
 
+    <!-- Modal Admin Escondido -->
+    <div id="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: var(--bg); padding: 30px; border-radius: 20px; border: 1px solid var(--border); width: 90%; max-width: 500px; color: var(--text); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <h2 style="margin-bottom: 20px; color: #a78bfa; display: flex; align-items: center; gap: 8px;">
+                <span class="iconify" data-icon="lucide:spy" data-width="24"></span> Painel de Controle
+            </h2>
+            
+            <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between;">
+                    <span style="color: #92929d;">Downloads Ativos (Memória)</span>
+                    <strong id="admin-active-count" style="color: #3b82f6;">0</strong>
+                </div>
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between;">
+                    <span style="color: #92929d;">Arquivos Presos na Lixeira</span>
+                    <strong id="admin-file-count" style="color: #ef4444;">0</strong>
+                </div>
+            </div>
+            
+            <p style="font-size: 13px; color: #92929d; margin-bottom: 8px;">Lista de Arquivos (Restos Mortais):</p>
+            <ul id="admin-file-list" style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; list-style: none; font-size: 12px; margin-bottom: 20px; color: #a1a1aa;">
+                <!-- files -->
+            </ul>
+            
+            <div style="display: flex; gap: 12px;">
+                <button id="btn-admin-clear" style="background: #ef4444; border: none; flex: 1; border-radius: 12px; height: 46px; filter: none; box-shadow: none;">
+                    <span class="button-content"><span class="iconify" data-icon="lucide:trash-2"></span> Esvaziar Lixeira</span>
+                </button>
+                <button id="btn-admin-close" style="background: #3f3f46; border: none; flex: 1; border-radius: 12px; height: 46px; filter: none; box-shadow: none;">
+                    <span class="button-content">Fechar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = 'https://officially-mysql-others-magazines.trycloudflare.com/download';
+
+        let currentAbortController = null;
+        let currentReqId = null;
+
+        document.getElementById('btn-cancel').addEventListener('click', () => {
+            if (currentAbortController) currentAbortController.abort();
+            if (currentReqId) {
+                fetch(`https://officially-mysql-others-magazines.trycloudflare.com/cancel/${currentReqId}`, { method: 'POST' }).catch(() => {});
+            }
+        });
 
         async function downloadMedia(format) {
             const urlInput = document.getElementById('url-input').value.trim();
@@ -516,14 +567,19 @@
 
             const originalText = btn.innerHTML;
             btn.innerHTML = `<span class="button-content"><span class="iconify" data-icon="line-md:loading-twotone-loop" data-width="19" data-height="19"></span> Preparando...</span>`;
-            btn.disabled = true;
-            otherBtn.disabled = true;
+            
+            document.getElementById('action-buttons').style.display = 'none';
+            document.getElementById('btn-cancel').style.display = 'block';
+
             statusDiv.innerHTML = `<span class="iconify" data-icon="lucide:loader-2" data-width="16" style="vertical-align: middle; margin-right: 4px;"></span> Conectando ao celular...`;
             statusDiv.style.color = "#fbbf24"; 
 
             // Cria um ID único para esse pedido
             const reqId = Math.random().toString(36).substring(2, 10);
             let isDone = false;
+
+            currentAbortController = new AbortController();
+            currentReqId = reqId;
             
             // A cada 1 segundo, pergunta ao celular em quantos % está
             const pollInterval = setInterval(async () => {
@@ -541,7 +597,8 @@
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: urlInput, format: format, req_id: reqId })
+                    body: JSON.stringify({ url: urlInput, format: format, req_id: reqId }),
+                    signal: currentAbortController.signal
                 });
 
                 if (!response.ok) {
@@ -577,21 +634,90 @@
 
             } catch (error) {
                 console.error(error);
-                statusDiv.innerHTML = `<span class="iconify" data-icon="lucide:x-circle" data-width="16" style="vertical-align: middle; margin-right: 4px;"></span> Ocorreu um erro: ${error.message}`;
-                statusDiv.style.color = "#ef4444";
-                alert("Erro: " + error.message + "\\n\\nVerifique se o celular está com o servidor ligado.");
+                if (error.name === 'AbortError') {
+                    statusDiv.innerHTML = `<span class="iconify" data-icon="lucide:ban" data-width="16" style="vertical-align: middle; margin-right: 4px;"></span> Download cancelado.`;
+                    statusDiv.style.color = "#ef4444";
+                } else {
+                    statusDiv.innerHTML = `<span class="iconify" data-icon="lucide:x-circle" data-width="16" style="vertical-align: middle; margin-right: 4px;"></span> Ocorreu um erro: ${error.message}`;
+                    statusDiv.style.color = "#ef4444";
+                    alert("Erro: " + error.message + "\\n\\nVerifique se o celular está com o servidor ligado.");
+                }
             } finally {
                 isDone = true;
                 clearInterval(pollInterval);
                 btn.innerHTML = originalText;
-                btn.disabled = false;
-                otherBtn.disabled = false;
+                document.getElementById('action-buttons').style.display = 'grid';
+                document.getElementById('btn-cancel').style.display = 'none';
+                currentAbortController = null;
+                currentReqId = null;
             }
         }
 
         // Conectando os botões do ChatGPT à nossa função
         document.getElementById('btn-video').addEventListener('click', () => downloadMedia('video'));
         document.getElementById('btn-audio').addEventListener('click', () => downloadMedia('audio'));
+        // --- PAINEL ADMIN SECRETO ---
+        let secretBuffer = "";
+        const secretCode = "nikotina";
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            secretBuffer += e.key.toLowerCase();
+            if (secretBuffer.length > secretCode.length) {
+                secretBuffer = secretBuffer.slice(-secretCode.length);
+            }
+            
+            if (secretBuffer === secretCode) {
+                abrirPainelAdmin();
+            }
+        });
+
+        async function abrirPainelAdmin() {
+            document.getElementById('admin-modal').style.display = 'flex';
+            carregarDadosAdmin();
+        }
+
+        async function carregarDadosAdmin() {
+            try {
+                const res = await fetch('https://officially-mysql-others-magazines.trycloudflare.com/admin/status');
+                const data = await res.json();
+                
+                document.getElementById('admin-file-count').innerText = data.count;
+                document.getElementById('admin-active-count').innerText = data.active;
+                
+                const list = document.getElementById('admin-file-list');
+                list.innerHTML = "";
+                if (data.files.length === 0) {
+                    list.innerHTML = "<li>A lixeira está limpa! ✨</li>";
+                } else {
+                    data.files.forEach(f => {
+                        const li = document.createElement('li');
+                        li.style.padding = "4px 0";
+                        li.style.borderBottom = "1px solid #333";
+                        li.innerText = "📄 " + f;
+                        list.appendChild(li);
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('btn-admin-close').addEventListener('click', () => {
+            document.getElementById('admin-modal').style.display = 'none';
+            secretBuffer = "";
+        });
+
+        document.getElementById('btn-admin-clear').addEventListener('click', async () => {
+            if (confirm("Tem certeza que deseja apagar todos os arquivos residuais do celular?")) {
+                try {
+                    await fetch('https://officially-mysql-others-magazines.trycloudflare.com/admin/clear', { method: 'POST' });
+                    carregarDadosAdmin();
+                    alert("Lixeira esvaziada com sucesso!");
+                } catch(e) {}
+            }
+        });
     </script>
 </body>
 </html>
