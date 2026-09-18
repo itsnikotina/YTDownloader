@@ -550,7 +550,8 @@
     </div>
 
     <script>
-        const API_URL = 'https://officially-mysql-others-magazines.trycloudflare.com/download';
+        const BASE_URL = 'https://filing-action-persons-band.trycloudflare.com';
+        const API_URL = `${BASE_URL}/download`;
 
         let currentAbortController = null;
         let currentReqId = null;
@@ -558,7 +559,7 @@
         document.getElementById('btn-cancel').addEventListener('click', () => {
             if (currentAbortController) currentAbortController.abort();
             if (currentReqId) {
-                fetch(`https://officially-mysql-others-magazines.trycloudflare.com/cancel/${currentReqId}`, { method: 'POST' }).catch(() => {});
+                fetch(`https://filing-action-persons-band.trycloudflare.com/cancel/${currentReqId}`, { method: 'POST' }).catch(() => {});
             }
         });
 
@@ -593,7 +594,7 @@
             const pollInterval = setInterval(async () => {
                 if (isDone) return;
                 try {
-                    const res = await fetch(`https://officially-mysql-others-magazines.trycloudflare.com/progress/${reqId}`);
+                    const res = await fetch(`https://filing-action-persons-band.trycloudflare.com/progress/${reqId}`);
                     const data = await res.json();
                     if (data.progress && !isDone) {
                         statusDiv.innerHTML = `<span class="iconify" data-icon="lucide:download" data-width="16" style="vertical-align: middle; margin-right: 4px;"></span> Progresso do celular: ${data.progress}`;
