@@ -550,8 +550,18 @@
     </div>
 
     <script>
-        const BASE_URL = 'https://park-revised-paul-accurately.trycloudflare.com/';
-        const API_URL = `${BASE_URL}/download`;
+        let BASE_URL = '';
+        let API_URL = '';
+
+        // Carrega o link do Cloudflare automaticamente do config.json
+        fetch('config.json?t=' + new Date().getTime())
+            .then(res => res.json())
+            .then(data => {
+                // Remove a barra "/" do final caso venha junto, para evitar "//download"
+                BASE_URL = data.url.replace(/\/$/, ""); 
+                API_URL = `${BASE_URL}/download`;
+            })
+            .catch(err => console.error("Erro ao carregar o link do servidor:", err));
 
         let currentAbortController = null;
         let currentReqId = null;
@@ -571,6 +581,10 @@
             
             if (!urlInput) {
                 alert("Por favor, cole um link válido primeiro!");
+                return;
+            }
+            if (!BASE_URL) {
+                alert("O link do servidor ainda não foi carregado. Tente novamente em 1 segundo!");
                 return;
             }
 
